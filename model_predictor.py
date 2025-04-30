@@ -21,6 +21,25 @@ def calculate_grade_evolution(row):
     average_evolution = sum(percentage_changes) / len(percentage_changes)  # Media aritmetică
     return round(average_evolution / 100, 2)  # Rotunjim la 2 zecimale
 
+def downsample(input_list, max_len):
+    # Determine the interval size
+    n = len(input_list)
+    if n <= max_len:
+        return input_list  # Return as is if no downsampling is needed
+
+    # Calculate step size to select the elements for downsampling
+    step = n / max_len
+
+    # Create a new list for the downsampled values
+    downsampled = []
+
+    for i in range(max_len):
+        start_idx = int(i * step)
+        end_idx = int((i + 1) * step) if i + 1 < max_len else n  # Make sure the last segment goes to the end
+        downsampled.append(np.mean(input_list[start_idx:end_idx]))  # Take mean of the interval
+
+    return downsampled
+
 # Funcția îmbunătățită pentru extinderea datelor conform metodei ratio
 def expand_grades(row, max_length, interpolate_grades=True):
     ratio = max_length / len(row)  # Factor de replicare
