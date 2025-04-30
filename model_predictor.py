@@ -114,11 +114,13 @@ def evaluate_model():
     rmse = np.sqrt(mse)
     r2 = r2_score(y_test, y_pred)
 
-    print(f"Model Evaluation Metrics:")
-    print(f"✅ MAE (Mean Absolute Error): {mae:.4f}")
-    print(f"✅ MSE (Mean Squared Error): {mse:.4f}")
-    print(f"✅ RMSE (Root Mean Squared Error): {rmse:.4f}")
-    print(f"✅ R² Score: {r2:.4f}")
+    
+    print("📊 Model Evaluation Metrics:")
+    print(f"✅ MAE (Mean Absolute Error): {mae:.4f} (Ideal: <0.5) → Lower MAE means more accurate predictions.")
+    print(f"✅ MSE (Mean Squared Error): {mse:.4f} (Ideal: Close to 0) → Penalizes larger errors more heavily.")
+    print(f"✅ RMSE (Root Mean Squared Error): {rmse:.4f} (Ideal: <1) → Measures error magnitude; lower is better.")
+    print(f"✅ R² Score: {r2:.4f} (Ideal: Close to 1) → Explains how well predictions match real values.")
+
 
 def predict_grade(input_grades):
     model = keras.models.load_model("grade_predictor.keras")  # Load model
