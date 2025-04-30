@@ -102,9 +102,9 @@ def read_from_csv():
     X = np.array(data)  # Input features (notele anterioare)
     y = np.mean(X, axis=1)  # Etiqueta: nota finală estimată (medie simplă ca baseline)
 
-    return data, X, y
+    return X, y
 
-def evaluate_model():
+def evaluate_model(model, X_test, y_test):
     # Get predictions for test set
     y_pred = model.predict(X_test)
 
@@ -133,12 +133,6 @@ def predict_grade(input_grades):
     # Ensure predictions stay within [1, 10]
     return max(1, min(10, round(predicted_grade, 2)))
 
-read_from_txt()
-data, X, y = read_from_csv()
-
-# Împărțim dataset-ul în seturi de antrenare și testare
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
 # Wrap Keras model for scikit-learn compatibility
 def build_model(input_shape, learning_rate=0.001, units=64, dropout_rate=0.3):
     model = keras.Sequential([
@@ -163,21 +157,33 @@ def build_model(input_shape, learning_rate=0.001, units=64, dropout_rate=0.3):
     model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
     return model
 
-def train_model():
+def train_model(model, X_train, y_train):
     model.fit(X_train, y_train, epochs=300, batch_size=25, validation_split=0.1)
     model.save("grade_predictor.keras")
 
-param_grid = {
-    "batch_size": [15, 10, 15, 25, 35],  # Different mini-batch sizes
-    "epochs": [100, 150, 200, 250, 300],  # Number of training iterations
-    "learning_rate": [0.0005, 0.001, 0.002, 0.005, 0.01],  # Fine-tuning step size
-    "units": [8, 16, 32, 64, 128],  # Number of LSTM neurons per layer
-    "dropout_rate": [0.1, 0.2, 0.25, 0.3, 0.4]  # Dropout percentage to prevent overfitting
-}
+def build_and_evaluate_model():
+    read_from_txt()
+    X, y = read_from_csv()
 
-model = build_model(X_train.shape[1])
+    # Împărțim dataset-ul în seturi de antrenare și testare
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+    X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
 
-# Apelăm funcția de antrenare
-train_model()
-# Call evaluation after training
-evaluate_model()
+    param_grid = {
+        "batch_size": [15, 10, 15, 25, 35],  # Different mini-batch sizes
+        "epochs": [100, 150, 200, 250, 300],  # Number of training iterations
+        "learning_rate": [0.0005, 0.001, 0.002, 0.005, 0.01],  # Fine-tuning step size
+        "units": [8, 16, 32, 64, 128],  # Number of LSTM neurons per layer
+        "dropout_rate": [0.1, 0.2, 0.25, 0.3, 0.4]  # Dropout percentage to prevent overfitting
+    }
+
+    model = build_model(X_train.shape[1])
+
+    # Apelăm funcția de antrenare
+    train_model(model, X_train, y_train)
+    # Call evaluation after training
+    evaluate_model(model, X_test, y_test)
+
+if __name__ == "__main__":
+    build_and_evaluate_model()
