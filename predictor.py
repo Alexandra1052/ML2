@@ -2,7 +2,6 @@ import math
 import pandas as pd
 from model_predictor import predict_grade, expand_grades, downsample
 
-
 INTERPOLATE_GRADES=True
 
 # Define five test cases with varied grade patterns

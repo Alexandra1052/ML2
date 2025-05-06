@@ -8,8 +8,25 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 INPUT_TXT="input.txt"
+MANUAL_INPUT_TXT="manual_input.txt"
 INPUT_CSV=INPUT_TXT.replace(".txt", ".csv")
 INTERPOLATE_GRADES=True
+GENERATE_INPUT=False
+
+def generate_grades_dataset(num_rows, num_grades_per_row=5, mean_grade=8.5, std_dev=0.4):
+    dataset = []
+    for _ in range(num_rows):
+        num_grades_per_row = np.random.randint(3, 11)
+        grades = np.random.normal(mean_grade, std_dev, num_grades_per_row)
+        grades = np.clip(grades, 1.0, 10.0)  # Ensure grades stay between 1 and 10
+        dataset.append(list(grades))
+
+    # Writing to a text file
+    with open(INPUT_TXT, "w") as file:
+        for row in dataset:
+            file.write(", ".join(f"{grade:.1f}" for grade in row) + "\n")
+
+    print("Dataset generated and saved as ${INPUT_TXT}.")
 
 def calculate_grade_evolution(row):
     percentage_changes = []
@@ -70,12 +87,13 @@ def expand_grades(row, max_length, interpolate_grades=True):
     # Ajustăm exact la max_length pentru a evita depășirea
     return expanded_row[:max_length]
 
-def read_from_txt():
+def read_from_txt(manual_input):
     valid_data = []
     invalid_rows = []
 
+    input_file = MANUAL_INPUT_TXT if manual_input else INPUT_TXT
     # Citim fișierul linie cu linie
-    with open(INPUT_TXT, "r") as file:
+    with open(input_file, "r") as file:
         for line in file:
             stripped = line.strip()
             if not stripped:
@@ -180,8 +198,8 @@ def train_model(model, X_train, y_train):
     model.fit(X_train, y_train, epochs=300, batch_size=25, validation_split=0.1)
     model.save("grade_predictor.keras")
 
-def build_and_evaluate_model():
-    read_from_txt()
+def build_and_evaluate_model(manual_input):
+    read_from_txt(manual_input)
     X, y = read_from_csv()
 
     # Împărțim dataset-ul în seturi de antrenare și testare
@@ -205,4 +223,6 @@ def build_and_evaluate_model():
     evaluate_model(model, X_test, y_test)
 
 if __name__ == "__main__":
-    build_and_evaluate_model()
+    if (GENERATE_INPUT):
+        generate_grades_dataset(100000)
+    build_and_evaluate_model(not GENERATE_INPUT)
