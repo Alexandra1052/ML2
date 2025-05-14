@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from tensorflow import keras
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU, LSTM
+from keras.regularizers import l2
+from keras.callbacks import ReduceLROnPlateau
 from scikeras.wrappers import KerasRegressor
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -171,19 +173,27 @@ def predict_grade(input_grades):
     return max(1, min(10, round(predicted_grade, 2)))
 
 # Wrap Keras model for scikit-learn compatibility
-def build_model(input_shape, learning_rate=0.001, units=64, dropout_rate=0.3):
+def build_model(input_shape, learning_rate=0.001, units=64, dropout_rate=0.3, l2_rate=0.01):
     model = keras.Sequential([
-        LSTM(units, return_sequences=True, input_shape=(input_shape, 1)),
+        # First LSTM layer with L2 regularization
+        LSTM(units, return_sequences=True, input_shape=(input_shape, 1), 
+             kernel_regularizer=l2(l2_rate)),
         Dropout(dropout_rate),
 
-        LSTM(units // 2),  # Reduce number of neurons in second LSTM layer
+        # Second LSTM layer with reduced units and L2 regularization
+        LSTM(units // 2, return_sequences=True, kernel_regularizer=l2(l2_rate)),
         Dropout(dropout_rate),
 
-        Dense(units),
+        # Third LSTM layer with further reduced units and L2 regularization
+        LSTM(units // 4, kernel_regularizer=l2(l2_rate)),
+        Dropout(dropout_rate),
+
+        # Dense layers
+        Dense(units, kernel_regularizer=l2(l2_rate)),
         BatchNormalization(),
         LeakyReLU(alpha=0.1),
 
-        Dense(units // 2),
+        Dense(units // 2, kernel_regularizer=l2(l2_rate)),
         BatchNormalization(),
         LeakyReLU(alpha=0.1),
 
@@ -192,10 +202,14 @@ def build_model(input_shape, learning_rate=0.001, units=64, dropout_rate=0.3):
     
     optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
     model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
-    return model
 
-def train_model(model, X_train, y_train):
-    model.fit(X_train, y_train, epochs=300, batch_size=25, validation_split=0.1)
+    # Learning rate scheduler to reduce learning rate when the validation loss plateaus
+    lr_scheduler = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6, verbose=1)
+    
+    return model, lr_scheduler
+
+def train_model(model, X_train, y_train, X_test, y_test, lr_scheduler):
+    history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=200, batch_size=16, verbose=1, callbacks=[lr_scheduler])
     model.save("grade_predictor.keras")
 
 def build_and_evaluate_model(manual_input):
@@ -215,10 +229,10 @@ def build_and_evaluate_model(manual_input):
         "dropout_rate": [0.1, 0.2, 0.25, 0.3, 0.4]  # Dropout percentage to prevent overfitting
     }
 
-    model = build_model(X_train.shape[1])
+    model, lr_scheduler = build_model(X_train.shape[1])
 
     # Apelăm funcția de antrenare
-    train_model(model, X_train, y_train)
+    train_model(model, X_train, y_train, X_test, y_test, lr_scheduler)
     # Call evaluation after training
     evaluate_model(model, X_test, y_test)
 
